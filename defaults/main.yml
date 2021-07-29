@@ -1,2 +1,6 @@
 ---
 # defaults file for glusterfs
+glusterfs_volumes: []
+  # - { dev: "vdc", name: "brick0" }
+  # - { dev: "vdd", name: "brick1" }
+glusterfs_zpools: []

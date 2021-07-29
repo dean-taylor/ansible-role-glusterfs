@@ -1,2 +1,8 @@
 ---
 # tasks file for glusterfs
+- name: purge
+  ansible.builtin.import_tasks: purge.yml
+  tags: [ "never", "purge" ]
+
+- name: configure disks
+  ansible.builtin.import_tasks: configure_disks.yml

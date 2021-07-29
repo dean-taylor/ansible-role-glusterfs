@@ -1,0 +1,26 @@
+---
+# tasks file for glusterfs
+- name: zfs volume delete
+  community.general.zfs:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ glusterfs_volumes | reverse }}"
+
+- name: zpool destroy
+  ansible.builtin.command:
+    cmd: zpool destroy {{ item.name }}
+  with_items:
+    - "{{ glusterfs_zpools }}"
+
+- name: wipefs
+  ansible.builtin.command:
+    cmd: "wipefs /dev/{{ item.dev }}1"
+  with_items:
+    - "{{ glusterfs_zpools }}"
+
+- name: partition destroy
+  ansible.builtin.command:
+    cmd: "wipefs -a /dev/{{ item.dev }}"
+  with_items:
+    - "{{ glusterfs_zpools }}"
