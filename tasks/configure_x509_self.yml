@@ -1,0 +1,36 @@
+- name: generate private key
+  ansible.builtin.command:
+    cmd: openssl genrsa -out /etc/ssl/glusterfs.key 2048
+    creates: /etc/ssl/glusterfs.key
+
+- name: generate signed certificate
+  ansible.builtin.command:
+    cmd: openssl req -new -x509 -key /etc/ssl/glusterfs.key -subj "/CN={{ inventory_hostname }}" -out /etc/ssl/glusterfs.pem
+    creates: /etc/ssl/glusterfs.pem
+  notify:
+    - restart glusterd
+  register: glusterfs_pem
+
+- name: update facts
+  ansible.builtin.setup:
+    filter:
+      - ansible_local
+  when:
+    - glusterfs_pem.changed
+
+- name: generate signing request
+  ansible.builtin.command:
+    cmd: openssl req -new -sha256 -key /etc/ssl/glusterfs.key -subj "/CN={{ inventory_hostname }}" -out /etc/ssl/glusterfs.csr
+    creates: /etc/ssl/glusterfs.csr
+
+- name: generate ca
+  ansible.builtin.template:
+    dest: /etc/ssl/glusterfs.ca
+    group: root
+    lstrip_blocks: yes
+    mode: 0644
+    owner: root
+    src: glusterfs.ca.j2
+    trim_blocks: yes
+  notify:
+    - restart glusterd

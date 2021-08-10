@@ -1,2 +1,11 @@
 ---
 # handlers file for glusterfs
+- name: facts update
+  ansible.builtin.setup:
+    filter:
+      - ansible_local
+
+- name: restart glusterd
+  ansible.builtin.service:
+    name: glusterd.service
+    state: restarted

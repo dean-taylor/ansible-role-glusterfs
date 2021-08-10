@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+
+jsonRet = {}
+
+try:
+    with open("/etc/ssl/glusterfs.pem","r") as pemFile:
+        jsonRet['pem'] = pemFile.read()
+
+    print(json.dumps(jsonRet))
+except:
+    print("{}")

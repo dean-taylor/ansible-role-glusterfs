@@ -1,0 +1,3 @@
+{% for host in ansible_play_hosts_all %}
+{{ hostvars[host]['ansible_local']['glusterfs']['pem'] }}
+{% endfor %}

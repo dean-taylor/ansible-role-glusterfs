@@ -1,2 +1,24 @@
 ---
 # tasks file for glusterfs
+- name: facts directory
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/ansible
+    - /etc/ansible/facts.d
+
+- name: facts
+  ansible.builtin.template:
+    dest: /etc/ansible/facts.d/glusterfs.fact
+    group: root
+    lstrip_blocks: yes
+    mode: 0755
+    owner: root
+    src: glusterfs.fact.j2
+    trim_blocks: yes
+  notify:
+    - facts update

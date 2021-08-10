@@ -4,5 +4,24 @@
   ansible.builtin.import_tasks: purge.yml
   tags: [ "never", "purge" ]
 
+- name: install
+  ansible.builtin.import_tasks: install.yml
+
 - name: configure disks
   ansible.builtin.import_tasks: configure_disks.yml
+  when: 0 > 1
+
+- name: configure x509 selfsign
+  ansible.builtin.import_tasks: configure_x509_self.yml
+  when:
+    - glusterfs_tls_data or glusterfs_tls_io
+    - (glusterfs_ca | length <= 0) or
+      (glusterfs_key | length <= 0) or
+      (glusterfs_pem | length <= 0)
+
+- name: configure ssl
+  ansible.builtin.import_tasks: configure_ssl.yml
+  when:
+    - glusterfs_pem | length > 0
+    - glusterfs_key | length > 0
+    - glusterfs_ca | length > 0

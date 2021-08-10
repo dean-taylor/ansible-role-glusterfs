@@ -1,0 +1,42 @@
+---
+# https://docs.gluster.org/en/latest/Administrator-Guide/SSL/
+- name: glusterfs.pem
+  ansible.builtin.copy:
+    content: "{{ glusterfs_pem }}"
+    dest: "{{ glusterfs_pem_path }}"
+    group: root
+    mode: 0644
+    owner: root
+  when: glusterfs_pem | length > 0
+
+- name: glusterfs.key
+  ansible.builtin.copy:
+    content: "{{ glusterfs_key }}"
+    dest: "{{ glusterfs_key_path }}"
+    group: root
+    mode: 0600
+    owner: root
+  when: glusterfs_key | length > 0
+
+- name: glusterfs.ca
+  ansible.builtin.copy:
+    content: "{{ glusterfs_ca }}"
+    dest: "{{ glusterfs_ca_path }}"
+    group: root
+    mode: 0644
+    owner: root
+  when: glusterfs_ca | length > 0
+
+- name: enable TLS on the management path
+  ansible.builtin.copy:
+    content: ""
+    dest: /var/lib/glusterd/secure-access
+    group: root
+    mode: 0644
+    owner: root
+    state: present
+  when:
+    - glusterfs_tls_data
+    - glusterfs_ca | length > 0
+    - glusterfs_pem | length > 0
+    - glusterfs_key | length > 0
