@@ -1,0 +1,14 @@
+---
+# https://docs.gluster.org/en/latest/Administrator-Guide/SSL/
+- name: enable TLS on the management path
+  ansible.builtin.copy:
+    content: ""
+    dest: /var/lib/glusterd/secure-access
+    group: root
+    mode: 0644
+    owner: root
+    state: present
+  notify:
+    - restart glusterd
+  when:
+    - glusterfs_tls_data

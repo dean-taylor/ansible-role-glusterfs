@@ -15,12 +15,20 @@
   ansible.builtin.import_tasks: configure_x509_self.yml
   when:
     - glusterfs_tls_data or glusterfs_tls_io
-    - (glusterfs_ca | length <= 0) or
-      (glusterfs_key | length <= 0) or
-      (glusterfs_pem | length <= 0)
+    - (glusterfs_ca | length == 0) or
+      (glusterfs_key | length == 0) or
+      (glusterfs_pem | length == 0)
 
-- name: configure ssl
-  ansible.builtin.import_tasks: configure_ssl.yml
+- name: configure x509
+  ansible.builtin.import_tasks: configure_x509.yml
+  when:
+    - glusterfs_tls_data or glusterfs_tls_io
+    - glusterfs_ca | length > 0
+    - glusterfs_key | length > 0
+    - glusterfs_pem | length > 0
+
+- name: configure
+  ansible.builtin.import_tasks: configure.yml
   when:
     - glusterfs_pem | length > 0
     - glusterfs_key | length > 0

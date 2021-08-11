@@ -9,14 +9,14 @@
     creates: /etc/ssl/glusterfs.pem
   notify:
     - restart glusterd
-  register: glusterfs_pem
+  register: ssl_glusterfs_pem
 
 - name: update facts
   ansible.builtin.setup:
     filter:
       - ansible_local
   when:
-    - glusterfs_pem.changed
+    - ssl_glusterfs_pem.changed
 
 - name: generate signing request
   ansible.builtin.command:

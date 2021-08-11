@@ -1,0 +1,20 @@
+---
+- name: Facts directories
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/ansible
+    - /etc/ansible/facts
+
+- name: GlusterFS facts
+  ansible.builtin.template:
+    dest: /etc/ansible/facts/glusterfs.fact
+    group: root
+    lstrip_blocks: yes
+    mode: 0755
+    owner: root
+    src: glusterfs.fact.j2
