@@ -1,0 +1,38 @@
+---
+- name: partition disks
+  community.general.parted:
+    align: optimal
+    device: "/dev/{{ item.dev }}"
+    label: gpt
+    name: "zpool{{ item.dev }}"
+    number: 1
+    part_end: "100%"
+    part_start: "0%"
+    state: present
+  with_items:
+    - "{{ glusterfs_zpools }}"
+
+- name: zpool create
+  ansible.builtin.shell:
+    cmd: |
+      PARTUUID=$(ls -l /dev/disk/by-partuuid/ |sed -n "s/^.*\s\(.*\)\s\+->.*{{ item.dev }}1$/\1/p")
+      zpool create {{ item.name }} /dev/disk/by-partuuid/${PARTUUID}
+    creates: "/{{ item.name }}"
+  with_items:
+    - "{{ glusterfs_zpools }}"
+
+- name: zfs volume create
+  community.general.zfs:
+    extra_zfs_properties:
+      acltype: posixacl
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ glusterfs_volumes }}"
+
+- name: mkdir brick
+  ansible.builtin.file:
+    path: "/{{ item }}/brick"
+    state: directory
+  with_items:
+    - "{{ glusterfs_volumes }}"

@@ -4,6 +4,7 @@ glusterfs_volumes: []
   # - { dev: "vdc", name: "brick0" }
   # - { dev: "vdd", name: "brick1" }
 glusterfs_zpools: []
+glusterfs_group: 'glusterfs'
 
 # https://docs.gluster.org/en/latest/Administrator-Guide/SSL/
 glusterfs_pem_path: /etc/ssl/glusterfs.pem

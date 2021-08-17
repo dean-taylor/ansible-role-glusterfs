@@ -5,11 +5,12 @@
   tags: [ "never", "purge" ]
 
 - name: install
-  ansible.builtin.import_tasks: install.yml
+  ansible.builtin.import_tasks: install_Ubuntu.yml
+  when:
+    - ansible_distribution == "Ubuntu"
 
-- name: configure disks
-  ansible.builtin.import_tasks: configure_disks.yml
-  when: 0 > 1
+- name: install common
+  ansible.builtin.import_tasks: install.yml
 
 - name: configure x509 selfsign
   ansible.builtin.import_tasks: configure_x509_self.yml
@@ -33,3 +34,14 @@
     - glusterfs_pem | length > 0
     - glusterfs_key | length > 0
     - glusterfs_ca | length > 0
+
+- name: create storage pools
+  gluster.gluster.gluster_peer:
+    nodes: "{{ item }}"
+    state: present
+  with_items: "{{ groups[glusterfs_group] }}"
+  when: inventory_hostname in groups[glusterfs_group][0]
+
+- name: volumes
+  ansible.builtin.import_tasks: volumes.yml
+  when: inventory_hostname in groups[glusterfs_group]

@@ -1,0 +1,22 @@
+---
+# https://launchpad.net/~gluster/+archive/ubuntu/glusterfs-9
+- name: apt repository
+  ansible.builtin.apt_repository:
+    repo: ppa:gluster/glusterfs-9
+    state: present
+
+- name: install client
+  ansible.builtin.apt:
+    cache_valid_time: 86400
+    name:
+      - glusterfs-client
+    state: present
+
+- name: install server
+  ansible.builtin.apt:
+    cache_valid_time: 86400
+    name:
+      - glusterfs-server
+    state: present
+  when:
+    - inventory_hostname in groups[glusterfs_group]
