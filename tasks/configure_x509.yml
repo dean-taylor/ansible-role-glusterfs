@@ -1,15 +1,12 @@
 ---
 # https://docs.gluster.org/en/latest/Administrator-Guide/SSL/
 - name: glusterfs.pem
-  #ansible.builtin.template:
   ansible.builtin.copy:
     content: "{{ glusterfs_pem }}"
     dest: "{{ glusterfs_pem_path }}"
     group: root
-    #lstrip_blocks: yes
     mode: 0644
     owner: root
-    #src: glusterfs.pem.j2
   notify:
     - restart glusterd
 

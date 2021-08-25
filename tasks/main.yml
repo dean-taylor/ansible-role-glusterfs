@@ -6,14 +6,17 @@
 
 - name: install
   ansible.builtin.import_tasks: install_Ubuntu.yml
+  tags: [ install ]
   when:
     - ansible_distribution == "Ubuntu"
 
 - name: install common
   ansible.builtin.import_tasks: install.yml
+  tags: [ install ]
 
 - name: configure x509 selfsign
   ansible.builtin.import_tasks: configure_x509_self.yml
+  tags: [ x509 ]
   when:
     - glusterfs_tls_data or glusterfs_tls_io
     - (glusterfs_ca | length == 0) or
@@ -22,6 +25,7 @@
 
 - name: configure x509
   ansible.builtin.import_tasks: configure_x509.yml
+  tags: [ x509 ]
   when:
     - glusterfs_tls_data or glusterfs_tls_io
     - glusterfs_ca | length > 0
@@ -30,6 +34,7 @@
 
 - name: configure
   ansible.builtin.import_tasks: configure.yml
+  tags: [ configure ]
   when:
     - glusterfs_pem | length > 0
     - glusterfs_key | length > 0
@@ -44,4 +49,5 @@
 
 - name: volumes
   ansible.builtin.import_tasks: volumes.yml
+  tags: [ volume ]
   when: inventory_hostname in groups[glusterfs_group]
