@@ -1,0 +1,8 @@
+---
+# roles/glusterfs/vars/Ubuntu.yml
+#
+packages_default:
+  - acl
+  - lvm2
+  - software-properties-common
+  - xfsprogs

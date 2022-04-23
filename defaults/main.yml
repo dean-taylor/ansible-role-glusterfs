@@ -1,8 +1,21 @@
 ---
-# defaults file for glusterfs
+# roles/glusterfs/defaults/main.yml
+#
+glusterfs_release: 9
+glusterfs_state: present
 glusterfs_volumes: []
-  # - { dev: "vdc", name: "brick0" }
-  # - { dev: "vdd", name: "brick1" }
+#  - name: VOL_NAME
+#    bricks:
+#      - { dev: "vdc", size: 200 }
+#    options:
+#      quota: on
+
+# https://github.com/kadalu/kadalu/blob/devel/server/README.md
+glusterfs_kadalu_enabled: false
+glusterfs_kadalu_user: kadalu
+glusterfs_kadalu_ssh_key: ""
+glusterfs_kadalu_ssh_pub: ""
+
 glusterfs_zpools: []
 glusterfs_group: 'glusterfs'
 
@@ -16,3 +29,5 @@ glusterfs_ca: ""
 
 glusterfs_tls_data: true
 glusterfs_tls_io: true
+
+glusterfs_zfs_params: {}

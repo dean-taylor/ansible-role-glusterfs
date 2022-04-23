@@ -1,0 +1,107 @@
+---
+# roles/glusterfs/tasks/configure-bricks-lvm.yml
+#
+- name: create partition
+  community.general.parted:
+    align: optimal
+    device: "/dev/{{ item.1.dev }}"
+    flags: [ lvm ]
+    label: gpt
+    name: "{{ item.0.name }}"
+    number: 1
+    part_end: "100%"
+    part_start: "0%"
+    part_type: primary
+    state: present
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+  when:
+    - 0 >1
+
+- name: create PV and VG
+  community.general.lvg:
+    pesize: 128
+    pvs: "/dev/{{ item.1.dev }}"
+    vg: "vg_{{ item.1.dev }}"
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+
+- name: create thin pool
+  community.general.lvol:
+    shrink: false
+    size: 100%FREE
+    state: present
+    thinpool: "tp_{{ item.0.name }}"
+    vg: "vg_{{ item.1.dev }}"
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+
+- name: create volume
+  community.general.lvol:
+    shrink: false
+    lv: "{{ item.0.name }}"
+    resizefs: true
+    size: "{{ item.1.size |default(lvol_size_default) }}g"
+    state: present
+    thinpool: "tp_{{ item.0.name }}"
+    vg: "vg_{{ item.1.dev }}"
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+
+- name: format volume
+  community.general.filesystem:
+    dev: "/dev/mapper/vg_{{ item.1.dev }}-{{ item.0.name }}"
+    fstype: xfs
+    opts: "-f -i size=512 -n size=8192 -d su=128k,sw=10"
+    state: present
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+
+- name: create base directory
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /data
+    - /data/glusterfs
+
+- name: create volume directory
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "/data/glusterfs/{{ item.name }}"
+    state: directory
+  with_items: "{{ glusterfs_volumes }}"
+
+- name: create brick mount point
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "/data/glusterfs/{{ item.0.name }}/brick{{ ansible_loop.index0 }}"
+    state: directory
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+  loop_control:
+    extended: true
+
+- name: mount volume
+  ansible.posix.mount:
+    boot: true
+    fstype: xfs
+    opts: "rw,inode64,noatime,nouuid"
+    path: "/data/glusterfs/{{ item.0.name }}/brick{{ ansible_loop.index0 }}"
+    src: "/dev/mapper/vg_{{ item.1.dev }}-{{ item.0.name }}"
+    state: mounted
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+  loop_control:
+    extended: true
+
+- name: create brick directory
+  ansible.builtin.file:
+    group: root
+    mode: 0755
+    owner: root
+    path: "/data/glusterfs/{{ item.0.name }}/brick{{ ansible_loop.index0 }}/brick"
+    state: directory
+  loop: "{{ glusterfs_volumes |subelements('bricks') }}"
+  loop_control:
+    extended: true

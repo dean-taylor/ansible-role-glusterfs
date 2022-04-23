@@ -1,32 +1,77 @@
 ---
-# tasks file for glusterfs
+# roles/glusterfs/tasks/main.yml
+#
+- name: set facts
+  ansible.builtin.set_fact:
+    cluster: "{{ ansible_play_hosts |sort |list }}"
+    cluster_primary: "{{ ansible_play_batch |sort |first }}"
+    vol_type: "{{ (glusterfs_zpools |length >0) |ternary('zfs','lvm') }}"
+
+- name: os specific vars
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+    - default.yml
+
 - name: purge
   ansible.builtin.import_tasks: purge.yml
   tags: [ "never", "purge" ]
+  when:
+    - 0 > 1
 
 - name: install
-  ansible.builtin.import_tasks: install_Ubuntu.yml
-  tags: [ install ]
-  when:
-    - ansible_distribution == "Ubuntu"
+  ansible.builtin.include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - install-{{ ansible_distribution }}.yml
+        - install-{{ ansible_os_family }}.yml
+      skip: true
 
 - name: install common
-  ansible.builtin.import_tasks: install.yml
-  tags: [ install ]
+  ansible.builtin.include_tasks: install.yml
+
+- name: configure
+  ansible.builtin.include_tasks: configure.yml
+
+- name: KaDalu setup
+  ansible.builtin.include_tasks: configure-kadalu.yml
+  when:
+    - glusterfs_kadalu_enabled
+
+- name: setup bricks
+  ansible.builtin.include_tasks: configure-bricks-{{ vol_type }}.yml
+
+# https://docs.ansible.com/ansible/latest/collections/gluster/gluster/gluster_volume_module.html
+- name: configure gluster volume
+  gluster.gluster.gluster_volume:
+    bricks: >-
+      {%- for brick in item.bricks -%}
+      /data/glusterfs/{{item.name}}/brick{{ loop.index -1 }}/brick
+      {%- if not loop.last %},{% endif %}
+      {%- endfor %}
+    cluster: "{{ cluster }}"
+    name: "{{ item.name }}"
+    # volume set: failed:  'gluster volume set <VOLNAME> quota on' is deprecated. Use 'gluster volume quota <VOLNAME> enable' instead.
+    #options: "{{ item.options }}"
+    rebalance: true
+    state: present
+  loop: "{{ glusterfs_volumes }}"
+  run_once: true
 
 - name: configure x509 selfsign
   ansible.builtin.import_tasks: configure_x509_self.yml
-  tags: [ x509 ]
   when:
+    - 0 > 1
     - glusterfs_tls_data or glusterfs_tls_io
-    - (glusterfs_ca | length == 0) or
-      (glusterfs_key | length == 0) or
-      (glusterfs_pem | length == 0)
+    - glusterfs_ca | length == 0
+    - glusterfs_key | length == 0
+    - glusterfs_pem | length == 0
 
 - name: configure x509
   ansible.builtin.import_tasks: configure_x509.yml
-  tags: [ x509 ]
   when:
+    - 0 > 1
     - glusterfs_tls_data or glusterfs_tls_io
     - glusterfs_ca | length > 0
     - glusterfs_key | length > 0
@@ -36,6 +81,7 @@
   ansible.builtin.import_tasks: configure.yml
   tags: [ configure ]
   when:
+    - 0 > 1
     - glusterfs_pem | length > 0
     - glusterfs_key | length > 0
     - glusterfs_ca | length > 0
@@ -44,10 +90,14 @@
   gluster.gluster.gluster_peer:
     nodes: "{{ item }}"
     state: present
+  run_once: true
   with_items: "{{ groups[glusterfs_group] }}"
-  when: inventory_hostname in groups[glusterfs_group][0]
+  delegate_to: "{{ groups[glusterfs_group][0] }}"
+  when:
+    - 0 > 1
 
 - name: volumes
-  ansible.builtin.import_tasks: volumes.yml
-  tags: [ volume ]
-  when: inventory_hostname in groups[glusterfs_group]
+  ansible.builtin.import_tasks: volumes-zfs.yml
+  when:
+    - 0 > 1
+    - inventory_hostname in groups[glusterfs_group]

@@ -1,0 +1,37 @@
+---
+# roles/glusterfs/tasks/configure-kadalu.yml
+#
+- name: kadalu user
+  ansible.builtin.user:
+    comment: KaDalu k8s GlusterFS plugin user
+    create_home: true
+    group: nogroup
+    groups: ''
+    home: "/var/lib/{{ glusterfs_kadalu_user }}"
+    name: "{{ glusterfs_kadalu_user }}"
+    password: '!'
+    shell: /bin/bash
+    system: true
+
+- name: kadalu sudoers
+  ansible.builtin.copy:
+    content: |
+      {{ glusterfs_kadalu_user }} ALL=NOPASSWD: /usr/sbin/gluster
+    dest: /etc/sudoers.d/kadalu
+    mode: 0644
+
+- name: kadalu gluster wrapper
+  ansible.builtin.copy:
+    dest: /var/lib/kadalu/kadalu-gluster
+    mode: 0755
+    src: kadalu-gluster
+
+- name: kadalu user authorized_keys
+  ansible.posix.authorized_key:
+    key: "{{ glusterfs_kadalu_ssh_pub }}"
+    key_options: "command=\"/var/lib/kadalu/kadalu-gluster\",restrict"
+    manage_dir: yes
+    state: present
+    user: "{{ glusterfs_kadalu_user }}"
+  when:
+    - glusterfs_kadalu_ssh_pub |length >0

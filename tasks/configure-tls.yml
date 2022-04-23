@@ -1,0 +1,33 @@
+---
+# https://docs.gluster.org/en/latest/Administrator-Guide/SSL/
+- block:
+    - name: /var/lib/glusterd
+      ansible.builtin.file:
+        group: root
+        mode: 0755
+        owner: root
+        path: /var/lib/glusterd
+        state: directory
+
+    - name: enable TLS on the management path server
+      ansible.builtin.copy:
+        content: ""
+        dest: /var/lib/glusterd/secure-access
+        group: root
+        mode: 0644
+        owner: root
+      notify:
+        - restart glusterd
+      when: inventory_hostname in groups[glusterfs_group]
+
+    - name: enable TLS on the management path client
+      ansible.builtin.copy:
+        content: ""
+        dest: /var/lib/glusterd/secure-access
+        group: root
+        mode: 0644
+        owner: root
+      when: inventory_hostname not in groups[glusterfs_group]
+
+  when:
+    - glusterfs_tls_data

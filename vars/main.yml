@@ -1,2 +1,6 @@
 ---
 # vars file for glusterfs
+glusterfs_zfs_params_default:
+  zfs_arc_max: "{{ ansible_memtotal_mb * 1048576 % 2 }}"
+
+lvol_size_default: 200

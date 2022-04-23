@@ -1,0 +1,3 @@
+{% for p,v in glusterfs_zfs_params %}
+options zfs {{ p }}={{ v }}
+{% endfor %}

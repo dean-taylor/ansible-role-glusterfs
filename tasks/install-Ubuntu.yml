@@ -1,0 +1,37 @@
+---
+# roles/glusterfs/tasks/install-Ubuntu.yml
+# https://docs.gluster.org/en/main/Install-Guide/Install/
+# https://launchpad.net/~gluster/+archive/ubuntu/glusterfs-9
+#
+- name: install prereq. packages
+  ansible.builtin.apt:
+    cache_valid_time: 86400
+    name: "{{ packages_default }}"
+    state: present
+    update_cache: true
+
+- name: apt repository
+  ansible.builtin.apt_repository:
+    repo: ppa:gluster/glusterfs-{{ glusterfs_release }}
+    state: present
+    update_cache: true
+
+- name: install
+  ansible.builtin.apt:
+    cache_valid_time: 86400
+    name:
+      - glusterfs-client
+      - glusterfs-server
+    state: present
+    update_cache: true
+
+- name: install server
+  ansible.builtin.apt:
+    cache_valid_time: 86400
+    name:
+      - glusterfs-server
+    state: present
+    update_cache: true
+  when:
+    - 0 > 1
+    - inventory_hostname in groups[glusterfs_group]

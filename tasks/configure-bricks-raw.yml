@@ -1,0 +1,21 @@
+---
+# roles/glusterfs/tasks/configure-bricks-raw.yml
+#
+- name: create partition
+  community.general.parted:
+    align: optimal
+    device: "/dev/{{ item.dev }}"
+    label: gpt
+    name: "{{ item.name }}"
+    number: 1
+    part_end: "100%"
+    part_start: "0%"
+    part_type: primary
+    state: present
+  with_items: "{{ glusterfs_volumes }}"
+
+- name: format partition
+  community.general.filesystem:
+    dev: "/dev/{{ item.dev }}1"
+    fstype: xfs
+    state: present

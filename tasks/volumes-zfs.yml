@@ -1,4 +1,13 @@
 ---
+- name: /etc/modprobe.d/zfs.conf
+  ansible.builtin.template:
+    dest: /etc/modprobe.d/zfs.conf
+    group: root
+    lstrip_blocks: yes
+    mode: 0644
+    owner: root
+    src: zfs.conf.j2
+
 - name: partition disks
   community.general.parted:
     align: optimal

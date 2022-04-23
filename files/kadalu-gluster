@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#
+GLUSTER='/usr/sbin/gluster'
+echo "$(date) $SSH_ORIGINAL_COMMAND" >>/tmp/kadalu-gluster.log
+
+# Sanity checks
+[[ $SSH_ORIGINAL_COMMAND =~ ^(sudo )?(/usr/sbin/)?gluster ]] || \
+  { >&2 echo "Can execute gluster command only"; exit 127; }
+
+exec $SSH_ORIGINAL_COMMAND
