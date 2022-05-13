@@ -7,9 +7,6 @@
     name: glusterd.service
     state: started
 
-- ansible.builtin.debug:
-    var: cluster
-
 - name: peers
   gluster.gluster.gluster_peer:
     nodes: "{{ cluster }}"

@@ -5,7 +5,9 @@
   ansible.builtin.set_fact:
     cluster: "{{ ansible_play_hosts |sort |list }}"
     cluster_primary: "{{ ansible_play_batch |sort |first }}"
-    vol_type: "{{ (glusterfs_zpools |length >0) |ternary('zfs','lvm') }}"
+    block_type: "{{(glusterfs_zfs_devices|length>0)|ternary('zfs','lvm')}}"
+    zpool_name: "glusterfs0"
+    x509_op: "{{(glusterfs_pem|length>0)|ternary('copy','ownca')}}"
 
 - name: os specific vars
   ansible.builtin.include_vars: "{{ item }}"
@@ -13,12 +15,6 @@
     - "{{ ansible_distribution }}.yml"
     - "{{ ansible_os_family }}.yml"
     - default.yml
-
-- name: purge
-  ansible.builtin.import_tasks: purge.yml
-  tags: [ "never", "purge" ]
-  when:
-    - 0 > 1
 
 - name: install
   ansible.builtin.include_tasks: "{{ item }}"
@@ -40,23 +36,56 @@
     - glusterfs_kadalu_enabled
 
 - name: setup bricks
-  ansible.builtin.include_tasks: configure-bricks-{{ vol_type }}.yml
+  ansible.builtin.include_tasks: configure-bricks-{{block_type}}.yml
+  when:
+    - glusterfs_block_managed
+
+- name: TLS x509 certificates
+  ansible.builtin.include_tasks: configure-x509-{{x509_op}}.yml
+  when:
+    - glusterfs_tls_data or glusterfs_tls_io
 
 # https://docs.ansible.com/ansible/latest/collections/gluster/gluster/gluster_volume_module.html
 - name: configure gluster volume
   gluster.gluster.gluster_volume:
-    bricks: >-
-      {%- for brick in item.bricks -%}
-      /data/glusterfs/{{item.name}}/brick{{ loop.index -1 }}/brick
-      {%- if not loop.last %},{% endif %}
-      {%- endfor %}
-    cluster: "{{ cluster }}"
-    name: "{{ item.name }}"
+    #arbiters: "{{item.arbiters|default(0)}}"
+    bricks: "{{item.bricks|join(',')}}"
+    cluster: "{{item.cluster|default(cluster)}}"
+    disperses: "{{item.disperses|default(0)}}"
+    force: "{{item.force|default(false)}}"
+    name: "{{item.name}}"
     # volume set: failed:  'gluster volume set <VOLNAME> quota on' is deprecated. Use 'gluster volume quota <VOLNAME> enable' instead.
-    #options: "{{ item.options }}"
-    rebalance: true
+    #options: "{{item.options|default({})}}"
+    #quota: "{{item.quota|default('10.0MB')}}"
+    rebalance: "{{item.rebalance|default(false)}}"
+    redundancies: "{{item.redundancies|default(0)}}"
+    #replicas: "{{item.replicas|default(0)}}"
     state: present
-  loop: "{{ glusterfs_volumes }}"
+    #stripes: "{{item.stripes|default(0)}}"
+    transport: "{{item.transport|default('tcp')}}"
+  loop: "{{glusterfs_volumes}}"
+  run_once: true
+
+# volume set: failed:  'gluster volume set <VOLNAME> quota on' is deprecated. Use 'gluster volume quota <VOLNAME> enable' instead.
+#
+- name: workaround volume options set
+  ansible.builtin.shell:
+    cmd: |
+      GLUSTER='gluster --mode=script --xml'
+      {%for k,v in item.options.items()%}
+      $GLUSTER volume get {{item.name}} {{k}} |grep -q '<Value>{{v}}</Value>' || \
+      { $GLUSTER volume {{k}} {{item.name}}
+      {%-if v is sameas true or v is sameas false or ('on' == v) or ('off' == v)%}
+      {{(v is true or ('on' == v))|ternary(' enable ',' disable ')-}}
+      {%else%}
+      {{' %s ' % (v|string)-}}
+      {%endif%}
+      && echo state_changed; }
+      {%endfor%}
+    executable: /bin/bash
+  register: gluster_get_cmd
+  loop: "{{glusterfs_volumes}}"
+  changed_when: "'state_changed' in gluster_get_cmd.stdout"
   run_once: true
 
 - name: configure x509 selfsign
@@ -96,8 +125,9 @@
   when:
     - 0 > 1
 
-- name: volumes
-  ansible.builtin.import_tasks: volumes-zfs.yml
+- name: purge
+  ansible.builtin.import_tasks: purge.yml
+  tags: [ "never", "purge" ]
   when:
     - 0 > 1
-    - inventory_hostname in groups[glusterfs_group]
+

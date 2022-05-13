@@ -1,0 +1,92 @@
+---
+# roles/glusterfs/tasks/configure-x509-ownca.yml
+#
+- name: x509 rootCA
+  delegate_to: "{{cluster_primary}}"
+  run_once: true
+  block:
+    - name: rootCA check?
+      community.crypto.x509_certificate_info:
+        path: "{{glusterfs_ownca_path}}"
+        valid_at:
+          verified_ok: "+30d"
+      failed_when: false
+      register: rootCA_info
+
+    - name: x509 root CA
+      when:
+        - 'No such file or directory' in rootCA_info.msg
+        - not rootCA_info.valid_at.verified_ok
+      block:
+        - name: x509 rootCA private key
+          community.crypto.openssl_privatekey:
+            cipher: auto
+            curve: secp256r1
+            passphrase: "{{glusterfs_ownca_privatekey_passphrase}}"
+            path: "{{glusterfs_ownca_privatekey_path}}"
+            state: present
+
+        - name: x509 rootCA CSR
+          community.crypto.openssl_csr_pipe:
+            privatekey_path: "{{glusterfs_ownca_privatekey_path}}"
+            privatekey_passphrase: "{{glusterfs_ownca_privatekey_passphrase}}"
+            common_name: GlusterFS rootCA
+            use_common_name_for_san: false
+            basic_constraints:
+              - 'CA:TRUE'
+            basic_constraints_critical: true
+            key_usage:
+              - keyCertSign
+            key_usage_critical: true
+          register: rootCA_csr
+
+        - name: x509 rootCA
+          community.crypto.x509_certificate:
+            path: "{{glusterfs_ownca_path}}"
+            csr_content: "{{rootCA_csr.csr}}"
+            privatekey_path: "{{glusterfs_ownca_privatekey_path}}"
+            privatekey_passphrase: "{{glusterfs_ownca_privatekey_passphrase}}"
+            provider: selfsigned
+
+- name: x509 server cert?
+  community.crypto.x509_certificate_info:
+    path: "{{glusterfs_pem_path}}"
+    valid_at:
+      verified_ok: "+30d"
+  failed_when: false
+  register: cert_info
+
+- name: x509 server cert
+  when:
+    - 'No such file or directory' in cert_info.msg
+    - not cert_info.valid_at.verified_ok
+  block:
+    - name: x509 server cert key
+      community.crypto.openssl_privatekey:
+        path: "{{glusterfs_key_path}}"
+
+    - name: x509 server cert csr
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{glusterfs_key_path}}"
+        subject_alt_name:
+          - DNS:{{ansible_fqdn}}
+          - DNS:{{ansible_hostname}}
+          - IP:{{ansible_default_ipv4.address}}
+      register: csr
+
+    - name: x509 server cert
+      community.crypto.x509_certificate_pipe:
+        csr_content: "{{csr.csr}}"
+        provider: ownca
+        ownca_path: "{{glusterfs_ownca_path}}"
+        ownca_privatekey_path: "{{glusterfs_ownca_privatekey_path}}"
+        ownca_privatekey_passphrase: "{{glusterfs_ownca_privatekey_passphrase}}"
+        ownca_not_after: +365d
+        ownca_not_before: -1d
+      delegate_to: "{{cluster_primary}}"
+      register: certificate
+
+    - name: write cert
+      ansible.builtin.copy:
+        dest: "{{glusterfs_pem_path}}"
+        content: "{{certificate.certificate}}"

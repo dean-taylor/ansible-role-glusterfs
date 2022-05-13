@@ -1,18 +1,37 @@
 ---
 # roles/glusterfs/defaults/main.yml
 #
+# /data/glusterfs/VOLUME/brick#/brick
+glusterfs_block_managed: false
+glusterfs_block_type: lvm
+glusterfs_zfs_devices: []
+#  - /dev/disk/by-id/virtio-1956fe87-6c3a-4356-9
+#glusterfs_zfs_volumes:
+#  - vol: glusterfs0/kadalu0
+#    mount_point: /data/glusterfs/kadalu/brick0
+#  - vol: glusterfs1/kadalu1
+#    mount_point: /data/glusterfs/kadalu/brick1
+
 glusterfs_release: 9
 glusterfs_state: present
 glusterfs_volumes: []
-#  - name: VOL_NAME
-#    bricks:
-#      - { dev: "vdc", size: 200 }
+#  - bricks:
+#      - /data/glusterfs/kadalu/brick0/brick
+#      - /data/glusterfs/kadalu/brick1/brick
+#    cluster:
+#      - "{{hostvars[(ansible_play_hosts|sort).0]['ansible_default_ipv4']['address']}}"
+#      - "{{hostvars[(ansible_play_hosts|sort).1]['ansible_default_ipv4']['address']}}"
+#      - "{{hostvars[(ansible_play_hosts|sort).2]['ansible_default_ipv4']['address']}}"
+#    disperses: 6
+#    name: kadalu
 #    options:
-#      quota: on
+#      quota: 'on'
+#    redundancies: 2
 
 # https://github.com/kadalu/kadalu/blob/devel/server/README.md
 glusterfs_kadalu_enabled: false
-glusterfs_kadalu_user: kadalu
+glusterfs_kadalu_user_home: "/var/lib/kadalu"
+glusterfs_kadalu_user: "kadalu"
 glusterfs_kadalu_ssh_key: ""
 glusterfs_kadalu_ssh_pub: ""
 
@@ -27,7 +46,7 @@ glusterfs_pem: ""
 glusterfs_key: ""
 glusterfs_ca: ""
 
-glusterfs_tls_data: true
-glusterfs_tls_io: true
+glusterfs_tls_data: false
+glusterfs_tls_io: false
 
 glusterfs_zfs_params: {}

@@ -7,31 +7,70 @@
     create_home: true
     group: nogroup
     groups: ''
-    home: "/var/lib/{{ glusterfs_kadalu_user }}"
-    name: "{{ glusterfs_kadalu_user }}"
+    home: "{{glusterfs_kadalu_user_home}}"
+    name: "{{glusterfs_kadalu_user}}"
     password: '!'
     shell: /bin/bash
     system: true
 
+- name: kadalu user ssh dir
+  ansible.builtin.file:
+    mode: 0700
+    owner: "{{glusterfs_kadalu_user}}"
+    path: "{{glusterfs_kadalu_user_home}}/.ssh"
+    state: directory
+
 - name: kadalu sudoers
   ansible.builtin.copy:
     content: |
-      {{ glusterfs_kadalu_user }} ALL=NOPASSWD: /usr/sbin/gluster
+      {{glusterfs_kadalu_user}} ALL=NOPASSWD: /usr/sbin/gluster
     dest: /etc/sudoers.d/kadalu
     mode: 0644
 
 - name: kadalu gluster wrapper
   ansible.builtin.copy:
-    dest: /var/lib/kadalu/kadalu-gluster
+    dest: "{{glusterfs_kadalu_user_home}}/kadalu-gluster"
     mode: 0755
     src: kadalu-gluster
 
+- name: kadalu ssh create
+  when:
+    - glusterfs_kadalu_ssh_pub |length==0 
+  block:
+    - name: kadalu ssh auth
+      run_once: true
+      block:
+        - name: kadalu ssh-genkey
+          community.crypto.openssh_keypair:
+            comment: "kadalu@glusterfs"
+            mode: 0600
+            path: "{{glusterfs_kadalu_user_home}}/.ssh/id_rsa"
+            size: 2048
+            state: present
+            type: rsa
+          register: kadalu_ssh_genkey
+
+        - name: kadalu id_rsa?
+          ansible.builtin.slurp:
+            src: "{{glusterfs_kadalu_user_home}}/.ssh/id_rsa"
+          register: kadalu_id_rsa
+
+    - name: kadalu user ssh
+      ansible.builtin.copy:
+        content: "{{item.content}}"
+        dest: "{{glusterfs_kadalu_user_home}}/.ssh/{{item.name}}"
+        mode: 0600
+      no_log: true
+      with_items:
+        - {name: id_rsa, content: "{{kadalu_id_rsa.content|b64decode}}"}
+        - {name: id_rsa.pub, content: "{{kadalu_ssh_genkey.public_key}} {{kadalu_ssh_genkey.comment}}"}
+
 - name: kadalu user authorized_keys
   ansible.posix.authorized_key:
-    key: "{{ glusterfs_kadalu_ssh_pub }}"
-    key_options: "command=\"/var/lib/kadalu/kadalu-gluster\",restrict"
+    key: "{{(glusterfs_kadalu_ssh_pub|length>0)|ternary(
+            glusterfs_kadalu_ssh_pub,
+            (kadalu_ssh_genkey.public_key+' '+kadalu_ssh_genkey.comment))}}"
+    key_options: "command=\"{{glusterfs_kadalu_user_home}}/kadalu-gluster\",restrict"
     manage_dir: yes
     state: present
-    user: "{{ glusterfs_kadalu_user }}"
-  when:
-    - glusterfs_kadalu_ssh_pub |length >0
+    user: "{{glusterfs_kadalu_user}}"
