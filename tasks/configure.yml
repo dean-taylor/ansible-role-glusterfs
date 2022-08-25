@@ -12,4 +12,3 @@
     nodes: "{{ cluster }}"
     state: present
   run_once: true
-

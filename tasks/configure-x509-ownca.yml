@@ -15,7 +15,7 @@
 
     - name: x509 root CA
       when:
-        - 'No such file or directory' in rootCA_info.msg
+        - "'No such file or directory' in rootCA_info.msg"
         - not rootCA_info.valid_at.verified_ok
       block:
         - name: x509 rootCA private key
@@ -58,7 +58,7 @@
 
 - name: x509 server cert
   when:
-    - 'No such file or directory' in cert_info.msg
+    - "'No such file or directory' in cert_info.msg"
     - not cert_info.valid_at.verified_ok
   block:
     - name: x509 server cert key
